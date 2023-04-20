@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"sync"
 	"time"
 )
@@ -31,8 +30,8 @@ func NewCanalizer(toChan, resChan chan any, errChan chan error) *Canalizer {
 // RunCreators -- генерация чего угодно в заданный канал общего назначения в несколько потоков, заданное время
 // по завершению всех генераторов закрывает канал toChan самостоятельно
 func (can *Canalizer) RunCreators(num int, timeout time.Duration, newItem func() any) {
+	can.wgCreators.Add(num)
 	for ; num > 0; num-- {
-		can.wgCreators.Add(1)
 		go func(id int, timeout time.Duration) {
 			started := time.Now()
 			i := 0
@@ -40,7 +39,6 @@ func (can *Canalizer) RunCreators(num int, timeout time.Duration, newItem func()
 				can.toChan <- newItem()
 				i++
 			}
-			log.Printf("Creator %d ended %d", id, i)
 			can.wgCreators.Done()
 		}(num, timeout)
 	}
@@ -98,8 +96,8 @@ func (can *Canalizer) RunResults(guid func(any) (int, error)) (map[int]any, []er
 			}
 		case er, ok2 = <-can.errChan:
 			if !ok2 {
-				break
-			} // from select канал закрыт
+				break // from select канал закрыт
+			}
 			writeLocker.Lock()
 			errs = append(errs, er)
 			writeLocker.Unlock()
